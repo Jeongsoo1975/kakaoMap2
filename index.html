@@ -40,7 +40,7 @@
                     if(item.latitude && item.longitude){
                         var circle = new kakao.maps.Circle({
                             center: new kakao.maps.LatLng(item.latitude, item.longitude),
-                            radius: Math.sqrt(item.as_count) * 100, // as_count에 비례한 반지름
+                            radius: Math.sqrt(item.as_count) * 1000, // as_count에 비례한 반지름
                             strokeWeight: 2,
                             strokeColor: '#FF0000',
                             strokeOpacity: 0.8,
