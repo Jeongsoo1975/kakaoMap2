@@ -35,6 +35,7 @@
         fetch('GeoDataResult1.json')
             .then(response => response.json())
             .then(data => {
+                console.log('Loaded data:', data); // 데이터를 콘솔에 출력
                 data.forEach(function(item) {
                     if(item.latitude && item.longitude){
                         var circle = new kakao.maps.Circle({
