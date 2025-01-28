@@ -32,7 +32,7 @@
         var map = new kakao.maps.Map(mapContainer, mapOption);
 
         // 외부 JSON 데이터 로드
-        fetch('GeoDataResult1.json')
+        fetch('GeoDataResult.json')
             .then(response => response.json())
             .then(data => {
                 console.log('Loaded data:', data); // 데이터를 콘솔에 출력
