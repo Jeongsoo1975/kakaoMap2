@@ -85,7 +85,10 @@
                 return response.json();
             })
             .then(data => {
-                let items;
+                // 디버깅을 위한 로그 (문제 해결 후 제거 가능)
+                console.log('Loaded data:', data);
+
+                let items = [];
 
                 // 데이터가 배열인지 확인
                 if (Array.isArray(data)) {
@@ -95,9 +98,13 @@
                 else if (data.locations && Array.isArray(data.locations)) {
                     items = data.locations;
                 } 
-                // 예상치 못한 데이터 구조일 경우 빈 배열로 설정
-                else {
-                    items = [];
+                // 데이터가 객체의 key-value 쌍일 경우, 값들 중 배열을 찾아 처리
+                else if (typeof data === 'object') {
+                    for (let key in data) {
+                        if (Array.isArray(data[key])) {
+                            items = items.concat(data[key]);
+                        }
+                    }
                 }
 
                 // 각 항목을 순회하며 원 그리기
