@@ -3,8 +3,6 @@
 <head>
     <meta charset="utf-8">
     <title>AS 빈도수 지도 시각화</title>
-    <!-- 카카오맵 SDK 로드 -->
-    <script type="text/javascript" src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=18a3031306f7d4b7d1c63831b2f35310"></script>
     <style>
         /* 지도의 크기 설정 */
         #map {
@@ -31,6 +29,7 @@
             border-radius: 5px;
             font-size: 14px;
             z-index: 1000;
+            font-family: monospace;
         }
         #debug h2 {
             margin-top: 0;
@@ -40,6 +39,7 @@
         }
         #debug p {
             margin: 5px 0;
+            white-space: pre-wrap; /* 줄바꿈 유지 */
         }
         #debug .error {
             color: #ff4d4d;
@@ -49,6 +49,15 @@
         }
         #debug .info {
             color: #00ccff;
+        }
+        #debug .data-content {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 5px;
+            border-radius: 3px;
+            max-height: 15vh;
+            overflow-y: auto;
+            font-size: 12px;
+            color: #ffffff;
         }
         /* 커스텀 확대/축소 버튼 스타일 */
         .custom-zoom-control {
@@ -85,12 +94,15 @@
     <div id="debug">
         <h2>디버그 정보</h2>
         <p id="debug-status" class="info">데이터를 로드 중입니다...</p>
+        <p id="debug-data" class="data-content"></p>
     </div>
     <!-- 커스텀 확대/축소 버튼 -->
     <div class="custom-zoom-control">
         <div class="zoom-button" id="zoom-in">+</div>
         <div class="zoom-button" id="zoom-out">-</div>
     </div>
+    <!-- config.js 파일 불러오기 -->
+    <script src="config.js"></script>
     <script>
         // 디버그 메시지 업데이트 함수
         function updateDebug(message, type='info') {
@@ -100,132 +112,156 @@
             debugStatus.parentElement.scrollTop = debugStatus.parentElement.scrollHeight;
         }
 
-        // 지도 초기화
-        var mapContainer = document.getElementById('map'),
-            mapOption = {
-                center: new kakao.maps.LatLng(37.5665, 126.9780), // 서울 중심 좌표
-                level: 7 // 확대 레벨
+        // JSON 데이터 내용 표시 함수
+        function displayJSONData(data) {
+            var debugData = document.getElementById('debug-data');
+            debugData.innerHTML = JSON.stringify(data, null, 2);
+        }
+
+        // Kakao Maps SDK 로드 및 초기화
+        function loadKakaoMapsSDK() {
+            // SDK 스크립트 동적 로드
+            var script = document.createElement('script');
+            script.type = 'text/javascript';
+            script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${KAKAO_API_KEY}&autoload=false`;
+            script.onload = function() {
+                kakao.maps.load(initializeMap);
             };
+            document.head.appendChild(script);
+        }
 
-        var map = new kakao.maps.Map(mapContainer, mapOption);
+        // 지도 초기화 및 데이터 로드 함수
+        function initializeMap() {
+            // 지도 초기화
+            var mapContainer = document.getElementById('map'),
+                mapOption = {
+                    center: new kakao.maps.LatLng(37.5665, 126.9780), // 서울 중심 좌표
+                    level: 7 // 확대 레벨
+                };
 
-        // 기본 확대/축소 컨트롤 추가
-        var zoomControl = new kakao.maps.ZoomControl();
-        map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT); // 우측에 추가
+            var map = new kakao.maps.Map(mapContainer, mapOption);
 
-        // 커스텀 확대/축소 버튼 이벤트
-        document.getElementById('zoom-in').addEventListener('click', function() {
-            var currentLevel = map.getLevel();
-            if(currentLevel > 1){
-                map.setLevel(currentLevel - 1); // 레벨을 낮춰서 확대
-                updateDebug(`지도 확대: 현재 레벨 ${currentLevel - 1}`, 'info');
-            } else {
-                updateDebug(`이미 최대 확대 레벨입니다.`, 'warning');
-            }
-        });
+            // 기본 확대/축소 컨트롤 추가
+            var zoomControl = new kakao.maps.ZoomControl();
+            map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT); // 우측에 추가
 
-        document.getElementById('zoom-out').addEventListener('click', function() {
-            var currentLevel = map.getLevel();
-            if(currentLevel < 14){
-                map.setLevel(currentLevel + 1); // 레벨을 높여서 축소
-                updateDebug(`지도 축소: 현재 레벨 ${currentLevel + 1}`, 'info');
-            } else {
-                updateDebug(`이미 최소 축소 레벨입니다.`, 'warning');
-            }
-        });
-
-        // 외부 JSON 데이터 로드
-        fetch('GeoDataResult2.json')
-            .then(response => {
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+            // 커스텀 확대/축소 버튼 이벤트
+            document.getElementById('zoom-in').addEventListener('click', function() {
+                var currentLevel = map.getLevel();
+                if(currentLevel > 1){
+                    map.setLevel(currentLevel - 1); // 레벨을 낮춰서 확대
+                    updateDebug(`지도 확대: 현재 레벨 ${currentLevel - 1}`, 'info');
+                } else {
+                    updateDebug(`이미 최대 확대 레벨입니다.`, 'warning');
                 }
-                return response.json();
-            })
-            .then(data => {
-                // 디버깅을 위한 로그
-                updateDebug('JSON 데이터를 성공적으로 로드했습니다.', 'info');
-                updateDebug(`데이터 타입: ${Array.isArray(data) ? '배열' : typeof data}`, 'info');
+            });
 
-                let items = [];
+            document.getElementById('zoom-out').addEventListener('click', function() {
+                var currentLevel = map.getLevel();
+                if(currentLevel < 14){
+                    map.setLevel(currentLevel + 1); // 레벨을 높여서 축소
+                    updateDebug(`지도 축소: 현재 레벨 ${currentLevel + 1}`, 'info');
+                } else {
+                    updateDebug(`이미 최소 축소 레벨입니다.`, 'warning');
+                }
+            });
 
-                // 데이터가 배열인지 확인
-                if (Array.isArray(data)) {
-                    items = data;
-                    updateDebug(`데이터는 배열이며, 총 ${items.length}개의 항목이 있습니다.`, 'info');
-                } 
-                // 데이터가 객체이고, 특정 키에 배열이 있는지 확인 (예: 'locations')
-                else if (data.locations && Array.isArray(data.locations)) {
-                    items = data.locations;
-                    updateDebug(`데이터는 객체이며, 'locations' 키에 ${items.length}개의 항목이 있습니다.`, 'info');
-                } 
-                // 데이터가 객체의 key-value 쌍 중 배열인 값들을 찾기
-                else if (typeof data === 'object') {
-                    for (let key in data) {
-                        if (Array.isArray(data[key])) {
-                            items = items.concat(data[key]);
-                            updateDebug(`데이터는 객체이며, '${key}' 키에 ${data[key].length}개의 항목이 있습니다.`, 'info');
+            // 외부 JSON 데이터 로드
+            fetch('GeoDataResult2.json')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // 디버깅을 위한 로그
+                    updateDebug('JSON 데이터를 성공적으로 로드했습니다.', 'info');
+                    updateDebug(`데이터 타입: ${Array.isArray(data) ? '배열' : typeof data}`, 'info');
+
+                    // JSON 데이터 내용 표시
+                    displayJSONData(data);
+
+                    let items = [];
+
+                    // 데이터가 배열인지 확인
+                    if (Array.isArray(data)) {
+                        items = data;
+                        updateDebug(`데이터는 배열이며, 총 ${items.length}개의 항목이 있습니다.`, 'info');
+                    } 
+                    // 데이터가 객체이고, 특정 키에 배열이 있는지 확인 (예: 'locations')
+                    else if (data.locations && Array.isArray(data.locations)) {
+                        items = data.locations;
+                        updateDebug(`데이터는 객체이며, 'locations' 키에 ${items.length}개의 항목이 있습니다.`, 'info');
+                    } 
+                    // 데이터가 객체의 key-value 쌍 중 배열인 값들을 찾기
+                    else if (typeof data === 'object') {
+                        for (let key in data) {
+                            if (Array.isArray(data[key])) {
+                                items = items.concat(data[key]);
+                                updateDebug(`데이터는 객체이며, '${key}' 키에 ${data[key].length}개의 항목이 있습니다.`, 'info');
+                            }
+                        }
+                        if(items.length === 0){
+                            updateDebug('데이터 구조가 예상과 다르며, 배열을 찾을 수 없습니다.', 'error');
                         }
                     }
-                    if(items.length === 0){
-                        updateDebug('데이터 구조가 예상과 다르며, 배열을 찾을 수 없습니다.', 'error');
-                    }
-                }
-                else {
-                    updateDebug('데이터 구조가 예상과 다르며, 배열을 찾을 수 없습니다.', 'error');
-                }
 
-                // 각 항목을 순회하며 원 그리기
-                items.forEach(function(item, index) {
-                    // 좌표 데이터가 null인지 확인
-                    if(item.latitude == null || item.longitude == null){
-                        // 좌표 데이터가 없으면 해당 항목을 건너뜀
-                        updateDebug(`항목 ${index}에서 좌표 데이터가 누락되었습니다.`, 'warning');
-                        return;
-                    }
+                    // 각 항목을 순회하며 원 그리기
+                    items.forEach(function(item, index) {
+                        // 좌표 데이터가 null인지 확인
+                        if(item.latitude == null || item.longitude == null){
+                            // 좌표 데이터가 없으면 해당 항목을 건너뜀
+                            updateDebug(`항목 ${index}에서 좌표 데이터가 누락되었습니다.`, 'warning');
+                            return;
+                        }
 
-                    // as_count이 숫자인지 확인
-                    var asCount = Number(item.as_count);
-                    if (isNaN(asCount) || asCount <= 0) {
-                        // 유효하지 않은 as_count이면 해당 항목을 건너뜀
-                        updateDebug(`항목 ${index}에서 'as_count'가 유효하지 않습니다: ${item.as_count}`, 'warning');
-                        return;
-                    }
+                        // as_count이 숫자인지 확인
+                        var asCount = Number(item.as_count);
+                        if (isNaN(asCount) || asCount <= 0) {
+                            // 유효하지 않은 as_count이면 해당 항목을 건너뜀
+                            updateDebug(`항목 ${index}에서 'as_count'가 유효하지 않습니다: ${item.as_count}`, 'warning');
+                            return;
+                        }
 
-                    // 원의 반지름 계산
-                    var radius = Math.sqrt(asCount) * 300; // as_count에 비례한 반지름
+                        // 원의 반지름 계산
+                        var radius = Math.sqrt(asCount) * 300; // as_count에 비례한 반지름
 
-                    // 원 생성
-                    var circle = new kakao.maps.Circle({
-                        center: new kakao.maps.LatLng(item.latitude, item.longitude),
-                        radius: radius,
-                        strokeWeight: 2,
-                        strokeColor: '#FF0000',
-                        strokeOpacity: 0.8,
-                        strokeStyle: 'solid',
-                        fillColor: '#FF0000',
-                        fillOpacity: 0.5
+                        // 원 생성
+                        var circle = new kakao.maps.Circle({
+                            center: new kakao.maps.LatLng(item.latitude, item.longitude),
+                            radius: radius,
+                            strokeWeight: 2,
+                            strokeColor: '#FF0000',
+                            strokeOpacity: 0.8,
+                            strokeStyle: 'solid',
+                            fillColor: '#FF0000',
+                            fillOpacity: 0.5
+                        });
+                        circle.setMap(map);
+
+                        // 인포윈도우 생성
+                        var infowindow = new kakao.maps.InfoWindow({
+                            content: `<div style="padding:5px;">${item.name}: ${item.as_count}</div>`
+                        });
+
+                        // 원 클릭 시 인포윈도우 표시
+                        kakao.maps.event.addListener(circle, 'click', function(mouseEvent) {
+                            infowindow.setPosition(mouseEvent.latLng);
+                            infowindow.open(map);
+                            updateDebug(`인포윈도우가 열렸습니다: ${item.name}`, 'info');
+                        });
                     });
-                    circle.setMap(map);
 
-                    // 인포윈도우 생성
-                    var infowindow = new kakao.maps.InfoWindow({
-                        content: `<div style="padding:5px;">${item.name}: ${item.as_count}</div>`
-                    });
-
-                    // 원 클릭 시 인포윈도우 표시
-                    kakao.maps.event.addListener(circle, 'click', function(mouseEvent) {
-                        infowindow.setPosition(mouseEvent.latLng);
-                        infowindow.open(map);
-                        updateDebug(`인포윈도우가 열렸습니다: ${item.name}`, 'info');
-                    });
+                    updateDebug(`총 ${items.length}개의 항목 중 유효한 항목에 대해 원을 그렸습니다.`, 'info');
+                })
+                .catch(error => {
+                    updateDebug(`데이터 로드 중 오류 발생: ${error.message}`, 'error');
                 });
+        }
 
-                updateDebug(`총 ${items.length}개의 항목 중 유효한 항목에 대해 원을 그렸습니다.`, 'info');
-            })
-            .catch(error => {
-                updateDebug(`데이터 로드 중 오류 발생: ${error.message}`, 'error');
-            });
+        // Kakao Maps SDK 로드 함수 호출
+        loadKakaoMapsSDK();
     </script>
 </body>
 </html>
