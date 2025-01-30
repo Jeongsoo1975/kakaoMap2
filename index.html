@@ -63,7 +63,7 @@
 
         var map = new kakao.maps.Map(mapContainer, mapOption);
 
-        // 확대/축소 컨트롤 추가 (기본 컨트롤)
+        // 기본 확대/축소 컨트롤 추가
         var zoomControl = new kakao.maps.ZoomControl();
         map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT); // 우측에 추가
 
@@ -95,9 +95,9 @@
                 else if (data.locations && Array.isArray(data.locations)) {
                     items = data.locations;
                 } 
-                // 예상치 못한 데이터 구조일 경우 오류 발생
+                // 예상치 못한 데이터 구조일 경우 빈 배열로 설정
                 else {
-                    throw new Error('JSON 데이터가 예상된 형식이 아닙니다.');
+                    items = [];
                 }
 
                 // 각 항목을 순회하며 원 그리기
