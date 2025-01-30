@@ -17,6 +17,25 @@
             height: 100%;
             width: 100%;
         }
+        /* 확대/축소 버튼 스타일 (선택 사항) */
+        .zoom-control {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1;
+        }
+        .zoom-button {
+            display: block;
+            width: 30px;
+            height: 30px;
+            margin-bottom: 5px;
+            background-color: white;
+            border: 1px solid #ccc;
+            text-align: center;
+            line-height: 30px;
+            cursor: pointer;
+            font-size: 18px;
+        }
     </style>
 </head>
 <body>
@@ -31,6 +50,10 @@
 
         var map = new kakao.maps.Map(mapContainer, mapOption);
 
+        // 확대/축소 컨트롤 추가
+        var zoomControl = new kakao.maps.ZoomControl();
+        map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT); // 우측에 추가
+
         // 외부 JSON 데이터 로드
         fetch('GeoDataResult2.json')
             .then(response => {
@@ -41,50 +64,61 @@
             })
             .then(data => {
                 let items;
+
+                // 데이터가 배열인지 확인
                 if (Array.isArray(data)) {
                     items = data;
-                } else if (data.locations && Array.isArray(data.locations)) {
+                } 
+                // 데이터가 객체이고, 특정 키에 배열이 있는지 확인 (예: 'locations')
+                else if (data.locations && Array.isArray(data.locations)) {
                     items = data.locations;
-                } else {
+                } 
+                // 예상치 못한 데이터 구조일 경우 오류 발생
+                else {
                     throw new Error('JSON 데이터가 예상된 형식이 아닙니다.');
                 }
 
+                // 각 항목을 순회하며 원 그리기
                 items.forEach(function(item, index) {
-                    if(item.latitude && item.longitude){
-                        // as_count이 숫자인지 확인
-                        var asCount = Number(item.as_count);
-                        if (isNaN(asCount) || asCount <= 0) {
-                            console.warn(`Invalid as_count for item ${index}:`, item.as_count);
-                            return;
-                        }
-
-                        var radius = Math.sqrt(asCount) * 300; // as_count에 비례한 반지름
-
-                        var circle = new kakao.maps.Circle({
-                            center: new kakao.maps.LatLng(item.latitude, item.longitude),
-                            radius: radius,
-                            strokeWeight: 2,
-                            strokeColor: '#FF0000',
-                            strokeOpacity: 0.8,
-                            strokeStyle: 'solid',
-                            fillColor: '#FF0000',
-                            fillOpacity: 0.5
-                        });
-                        circle.setMap(map);
-
-                        // 인포윈도우 생성
-                        var infowindow = new kakao.maps.InfoWindow({
-                            content: `<div style="padding:5px;">${item.name}: ${item.as_count}</div>`
-                        });
-
-                        // 원 클릭 시 인포윈도우 표시
-                        kakao.maps.event.addListener(circle, 'click', function(mouseEvent) {
-                            infowindow.setPosition(mouseEvent.latLng);
-                            infowindow.open(map);
-                        });
-                    } else {
-                        console.warn(`Item ${index} is missing latitude or longitude.`);
+                    // 좌표 데이터가 null인지 확인
+                    if(item.latitude == null || item.longitude == null){
+                        // 좌표 데이터가 없으면 해당 항목을 건너뜀
+                        return;
                     }
+
+                    // as_count이 숫자인지 확인
+                    var asCount = Number(item.as_count);
+                    if (isNaN(asCount) || asCount <= 0) {
+                        // 유효하지 않은 as_count이면 해당 항목을 건너뜀
+                        return;
+                    }
+
+                    // 원의 반지름 계산
+                    var radius = Math.sqrt(asCount) * 300; // as_count에 비례한 반지름
+
+                    // 원 생성
+                    var circle = new kakao.maps.Circle({
+                        center: new kakao.maps.LatLng(item.latitude, item.longitude),
+                        radius: radius,
+                        strokeWeight: 2,
+                        strokeColor: '#FF0000',
+                        strokeOpacity: 0.8,
+                        strokeStyle: 'solid',
+                        fillColor: '#FF0000',
+                        fillOpacity: 0.5
+                    });
+                    circle.setMap(map);
+
+                    // 인포윈도우 생성
+                    var infowindow = new kakao.maps.InfoWindow({
+                        content: `<div style="padding:5px;">${item.name}: ${item.as_count}</div>`
+                    });
+
+                    // 원 클릭 시 인포윈도우 표시
+                    kakao.maps.event.addListener(circle, 'click', function(mouseEvent) {
+                        infowindow.setPosition(mouseEvent.latLng);
+                        infowindow.open(map);
+                    });
                 });
             })
             .catch(error => console.error('Error fetching data:', error));
