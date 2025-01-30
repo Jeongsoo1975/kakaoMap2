@@ -17,10 +17,42 @@
             height: 100%;
             width: 100%;
         }
+        /* 커스텀 확대/축소 버튼 스타일 */
+        .custom-zoom-control {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .zoom-button {
+            width: 40px;
+            height: 40px;
+            background-color: white;
+            border: 1px solid #ccc;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 24px;
+            user-select: none;
+        }
+        .zoom-button:not(:last-child) {
+            border-bottom: none;
+        }
+        .zoom-button:hover {
+            background-color: #f0f0f0;
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
+    <!-- 커스텀 확대/축소 버튼 -->
+    <div class="custom-zoom-control">
+        <div class="zoom-button" id="zoom-in">+</div>
+        <div class="zoom-button" id="zoom-out">-</div>
+    </div>
     <script>
         // 지도 초기화
         var mapContainer = document.getElementById('map'),
@@ -31,9 +63,18 @@
 
         var map = new kakao.maps.Map(mapContainer, mapOption);
 
-        // 확대/축소 컨트롤 추가
+        // 확대/축소 컨트롤 추가 (기본 컨트롤)
         var zoomControl = new kakao.maps.ZoomControl();
         map.addControl(zoomControl, kakao.maps.ControlPosition.RIGHT); // 우측에 추가
+
+        // 커스텀 확대/축소 버튼 이벤트
+        document.getElementById('zoom-in').addEventListener('click', function() {
+            map.setLevel(map.getLevel() - 1); // 레벨을 낮춰서 확대
+        });
+
+        document.getElementById('zoom-out').addEventListener('click', function() {
+            map.setLevel(map.getLevel() + 1); // 레벨을 높여서 축소
+        });
 
         // 외부 JSON 데이터 로드
         fetch('GeoDataResult2.json')
