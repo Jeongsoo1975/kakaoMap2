@@ -32,7 +32,7 @@
         var map = new kakao.maps.Map(mapContainer, mapOption);
 
         // 외부 JSON 데이터 로드
-        fetch('GeoDataResult1.json')
+        fetch('GeoDataResult2.json')
             .then(response => {
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
@@ -40,7 +40,16 @@
                 return response.json();
             })
             .then(data => {
-                data.forEach(function(item, index) {
+                let items;
+                if (Array.isArray(data)) {
+                    items = data;
+                } else if (data.locations && Array.isArray(data.locations)) {
+                    items = data.locations;
+                } else {
+                    throw new Error('JSON 데이터가 예상된 형식이 아닙니다.');
+                }
+
+                items.forEach(function(item, index) {
                     if(item.latitude && item.longitude){
                         // as_count이 숫자인지 확인
                         var asCount = Number(item.as_count);
